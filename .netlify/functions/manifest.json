@@ -1,1 +1,0 @@
-{"functions":[{"bundler":"zisi","buildData":{"runtimeAPIVersion":1},"mainFile":"/Users/lantzbrown/hermes-chat-ui/netlify/functions/chat.js","name":"chat","priority":10,"path":"/Users/lantzbrown/hermes-chat-ui/.netlify/functions/chat.zip","runtime":"js"}],"system":{"arch":"arm64","platform":"darwin"},"timestamp":1780041352092,"version":1}
