@@ -5,7 +5,7 @@
     const DEFAULT_API_URL = 'http://localhost:8642';
     const TUNNEL_URL = 'https://continuing-raleigh-respectively-now.trycloudflare.com';
     const TUNNEL_URL_SOURCE = 'https://raw.githubusercontent.com/LantzBrown/hermes-chat/main/tunnel-url.json';
-    const DEFAULT_API_KEY='bzJg4-...VZcw';
+    const DEFAULT_API_KEY='bzJg4-OgW2sP13g8G7uAeEAkt7KciUGu6BQUq-_VZcw';
     const STORAGE_KEY = 'hermes-chat-config-v8';
 
     const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
@@ -36,7 +36,7 @@
     });
 
     // ── Lock Screen ──
-    const LOCK_PASSWORD='***';
+    const LOCK_PASSWORD='Lantz_040405';
     const lockScreen = document.getElementById('lockScreen');
     const lockForm = document.getElementById('lockForm');
     const lockPassword = document.getElementById('lockPassword');

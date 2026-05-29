@@ -1,70 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0a0e14">
-    <title>Hermes Agent</title>
-    <link rel="stylesheet" href="style.css?v=13">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>hermes</title>
+<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
 </head>
 <body>
-    <div class="top-bar">
-        <span class="top-bar-brand">hermes</span>
-        <span class="top-bar-right">
-            <span class="status" id="connectionStatus">
-                <span class="status-dot" id="statusDot"></span>
-                <span class="status-text" id="statusText">...</span>
-            </span>
-            <span class="top-bar-sep">|</span>
-            <button class="top-btn" id="settingsBtn">settings</button>
-            <span class="top-bar-sep">|</span>
-            <button class="top-btn" id="newChatBtn">new</button>
-            <span class="top-bar-sep">|</span>
-            <button class="top-btn" id="sessionsBtn">sessions</button>
-        </span>
+<div id="app">
+  <div id="topbar">
+    <div id="brand">hermes</div>
+    <div id="status-dot" class="status-dot offline"></div>
+    <div id="topbar-spacer"></div>
+    <button id="btn-sessions" title="Sessions">&#9776;</button>
+    <button id="btn-new" title="New Session">+</button>
+    <button id="btn-settings" title="Settings">&#9881;</button>
+  </div>
+
+  <div id="session-picker" class="hidden">
+    <div id="session-list"></div>
+  </div>
+
+  <div id="messages">
+    <div id="welcome">
+      <div id="welcome-prompt">hermes@agent ~ $</div>
+      <div id="welcome-msg">ready. type a message to begin.</div>
     </div>
-    <div class="session-picker" id="sessionPicker">
-        <div class="session-picker-header">PAST SESSIONS <button class="close-btn" id="closeSessions">&#10005;</button></div>
-        <div class="session-list" id="sessionList"></div>
+  </div>
+
+  <div id="thinking" class="hidden">
+    <span class="thinking-label">thinking</span>
+    <span class="dot-anim"><span>.</span><span>.</span><span>.</span></span>
+  </div>
+
+  <div id="activity-log" class="hidden"></div>
+
+  <div id="input-area">
+    <span id="prompt-char">&gt;</span>
+    <textarea id="input" rows="1" placeholder="send a message..." autofocus></textarea>
+    <button id="btn-send" title="Send">&#9654;</button>
+    <button id="btn-stop" class="hidden" title="Stop">&#9632;</button>
+  </div>
+</div>
+
+<div id="settings-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">settings</div>
+    <label>API URL</label>
+    <input type="text" id="setting-url" placeholder="http://localhost:8642">
+    <label>API KEY</label>
+    <input type="password" id="setting-key" placeholder="key">
+    <div class="modal-actions">
+      <button id="btn-save-settings">save</button>
+      <button id="btn-close-settings">cancel</button>
     </div>
-    <div class="messages-container" id="messagesContainer">
-        <div class="welcome" id="welcomeScreen">
-            <div class="welcome-prompt">hermes@agent ~ $</div>
-            <div class="welcome-sub">ready. type a message to begin.</div>
-        </div>
-        <div class="messages" id="messages"></div>
-    </div>
-    <div class="input-area">
-        <div class="input-row">
-            <span class="input-prompt">&gt;</span>
-            <textarea id="messageInput" placeholder="" rows="1" autofocus></textarea>
-            <button class="send-btn" id="sendBtn" disabled>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            </button>
-            <button class="stop-btn" id="stopBtn" style="display:none">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-            </button>
-        </div>
-        <div class="input-hint" id="inputHint">enter to send / shift+enter for newline</div>
-    </div>
-    <div class="modal-overlay" id="settingsModal">
-        <div class="modal">
-            <div class="modal-header"><span>SETTINGS</span><button class="close-btn" id="closeSettingsBtn">&#10005;</button></div>
-            <div class="modal-body">
-                <div class="setting-group"><label>API SERVER URL</label><input type="text" id="apiUrl" placeholder="http://localhost:8642" /></div>
-                <div class="setting-group"><label>API KEY</label><input type="password" id="apiKey" placeholder="Your API_SERVER_KEY" /></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancelSettingsBtn">cancel</button>
-                <button class="btn btn-primary" id="saveSettingsBtn">save</button>
-            </div>
-        </div>
-    </div>
-    <script src="app.js?v=13"></script>
+  </div>
+</div>
+
+<script src="app.js?v=13"></script>
 </body>
 </html>
