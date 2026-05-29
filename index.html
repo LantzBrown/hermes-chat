@@ -1,166 +1,22 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>hermes agent</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/hermes-chat/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Hermes Agent - Dashboard</title>
+    <script type="module" crossorigin src="/hermes-chat/assets/index-CCqeEBxR.js"></script>
+    <link rel="stylesheet" crossorigin href="/hermes-chat/assets/index-BhhGPQqK.css">
+    <script>
+  (function(l) {
+    if (l.search[1] === '/') {
+      var d = l.search.slice(1).split('&').map(function(s) { return s.replace(/~and~/g, '&'); }).join('?');
+      window.history.replaceState(null, null, l.pathname.slice(0, -1) + d + l.hash);
+    }
+  }(window.location))
+  </script>
 </head>
-<body>
-
-<!-- Lock Screen -->
-<div id="lock-screen">
-  <div id="lock-content">
-    <pre id="ascii-art">
- ██╗  ██╗███████╗██████╗ ███╗   ███╗███████╗███████╗
- ██║  ██║██╔════╝██╔══██╗████╗ ████║██╔════╝██╔════╝
- ███████║█████╗  ██████╔╝██╔████╔██║█████╗  ███████╗
- ██╔══██║██╔══╝  ██╔══██╗██║╚██╔╝██║██╔══╝  ╚════██║
- ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║███████╗███████║
- ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝</pre>
-    <div id="lock-subtitle">autonomous ai agent</div>
-    <div id="lock-input-wrap">
-      <span id="lock-prompt">password &gt;</span>
-      <input type="password" id="lock-input" placeholder="..." autocomplete="off">
-    </div>
-    <div id="lock-error" class="hidden">access denied</div>
-    <div id="lock-hint">press enter to unlock · leave blank to skip</div>
-  </div>
-</div>
-
-<!-- Main App -->
-<div id="app" class="hidden">
-  <!-- Top Bar -->
-  <div id="topbar">
-    <div id="brand">
-      <span id="brand-icon">⚡</span>
-      <span id="brand-text">hermes</span>
-      <span id="brand-version">v1.0</span>
-    </div>
-    <div id="status-wrap">
-      <div id="status-dot" class="status-dot offline"></div>
-      <span id="status-text">offline</span>
-    </div>
-    <div id="topbar-spacer"></div>
-    <div id="model-badge" class="hidden">
-      <span id="model-name">--</span>
-    </div>
-    <button id="btn-sessions" title="Sessions">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="12" width="14" height="2" rx="1"/></svg>
-    </button>
-    <button id="btn-new" title="New Session">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.75.75 0 01.75.75v4.5h4.5a.75.75 0 010 1.5h-4.5v4.5a.75.75 0 01-1.5 0v-4.5h-4.5a.75.75 0 010-1.5h4.5v-4.5A.75.75 0 018 2z"/></svg>
-    </button>
-    <button id="btn-settings" title="Settings">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4.754a3.246 3.246 0 100 6.492 3.246 3.246 0 000-6.492zM5.754 8a2.246 2.246 0 114.492 0 2.246 2.246 0 01-4.492 0z"/><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 01-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 01-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 01.52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 011.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 011.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 01.52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 01-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 01-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 002.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 001.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 00-1.115 2.693l.16.291c.415.764-.421 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 00-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 00-2.692-1.115l-.292.16c-.764.415-1.6-.421-1.184-1.185l.159-.291A1.873 1.873 0 001.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 003.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 002.692-1.115l.094-.319z"/></svg>
-    </button>
-  </div>
-
-  <!-- Session Picker -->
-  <div id="session-picker" class="hidden">
-    <div id="session-header">
-      <span>sessions</span>
-      <button id="session-close">×</button>
-    </div>
-    <div id="session-list"></div>
-  </div>
-
-  <!-- Messages -->
-  <div id="messages">
-    <div id="welcome">
-      <pre id="welcome-ascii">
-  ┌─────────────────────────────────────┐
-  │                                     │
-  │   ⚡ hermes agent                   │
-  │   ─────────────────                 │
-  │   autonomous ai assistant           │
-  │                                     │
-  │   type a message to begin           │
-  │                                     │
-  └─────────────────────────────────────┘</pre>
-      <div id="welcome-tips">
-        <div class="tip"><span class="tip-key">shift+enter</span> new line</div>
-        <div class="tip"><span class="tip-key">enter</span> send</div>
-        <div class="tip"><span class="tip-key">/help</span> show commands</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Kawaii Spinner / Thinking -->
-  <div id="thinking" class="hidden">
-    <div id="thinking-inner">
-      <span id="spinner-face">(◕‿◕)</span>
-      <span id="thinking-label">thinking</span>
-      <span class="dot-anim"><span>.</span><span>.</span><span>.</span></span>
-    </div>
-    <div id="activity-feed" class="hidden"></div>
-  </div>
-
-  <!-- Input Area -->
-  <div id="input-area">
-    <div id="input-row">
-      <span id="prompt-char">❯</span>
-      <textarea id="input" rows="1" placeholder="send a message to hermes..." autofocus spellcheck="true"></textarea>
-      <button id="btn-send" title="Send (Enter)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-      </button>
-      <button id="btn-stop" class="hidden" title="Stop (Esc)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-      </button>
-    </div>
-    <div id="input-footer">
-      <span id="char-count">0</span>
-      <span id="session-id-display" class="hidden">session: <span id="session-id-value"></span></span>
-    </div>
-  </div>
-</div>
-
-<!-- Settings Modal -->
-<div id="settings-modal" class="modal hidden">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span class="modal-title">⚙ settings</span>
-      <button id="btn-close-settings" class="modal-close">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="setting-group">
-        <label>api endpoint</label>
-        <input type="text" id="setting-url" placeholder="http://localhost:8642">
-        <div class="setting-hint">hermes gateway API server URL</div>
-      </div>
-      <div class="setting-group">
-        <label>api key</label>
-        <input type="password" id="setting-key" placeholder="your-api-key">
-        <div class="setting-hint">authentication key for the API server</div>
-      </div>
-      <div class="setting-group">
-        <label>lock password</label>
-        <input type="password" id="setting-password" placeholder="optional screen lock">
-        <div class="setting-hint">set a password to lock the screen</div>
-      </div>
-      <div class="setting-group">
-        <label>theme accent</label>
-        <div id="accent-picker">
-          <button class="accent-btn active" data-accent="#d4a039" style="background:#d4a039" title="gold"></button>
-          <button class="accent-btn" data-accent="#3fb950" style="background:#3fb950" title="green"></button>
-          <button class="accent-btn" data-accent="#58a6ff" style="background:#58a6ff" title="blue"></button>
-          <button class="accent-btn" data-accent="#f78166" style="background:#f78166" title="orange"></button>
-          <button class="accent-btn" data-accent="#d2a8ff" style="background:#d2a8ff" title="purple"></button>
-          <button class="accent-btn" data-accent="#f85149" style="background:#f85149" title="red"></button>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button id="btn-save-settings" class="btn-primary">save</button>
-      <button id="btn-cancel-settings" class="btn-secondary">cancel</button>
-    </div>
-  </div>
-</div>
-
-<script src="app.js"></script>
-</body>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
