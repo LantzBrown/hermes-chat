@@ -3,7 +3,7 @@
     'use strict';
 
     const DEFAULT_API_URL = 'http://localhost:8642';
-    const TUNNEL_URL = 'https://installing-ultram-ballet-lenders.trycloudflare.com';
+    const TUNNEL_URL = 'https://continuing-raleigh-respectively-now.trycloudflare.com';
     const TUNNEL_URL_SOURCE = 'https://raw.githubusercontent.com/LantzBrown/hermes-chat/main/tunnel-url.json';
     const DEFAULT_API_KEY='bzJg4-OgW2sP13g8G7uAeEAkt7KciUGu6BQUq-_VZcw';
     const STORAGE_KEY = 'hermes-chat-config-v8';
