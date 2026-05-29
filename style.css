@@ -141,6 +141,16 @@ body {
     letter-spacing: 0.5px; margin-bottom: 4px; color: var(--text-muted);
 }
 .message-body { font-size: 14.5px; line-height: 1.65; color: var(--text-primary); word-wrap: break-word; overflow-wrap: break-word; }
+.message.user .message-body { color: #ffffff; }
+.message.assistant .message-body { color: #8b949e; }
+.message.assistant .message-role { color: #484f58; }
+.message.user .message-role { color: #6e7681; }
+.message.user .message-body code { color: #e6edf3; }
+.message.assistant .message-body code { color: #8b949e; }
+.message.assistant .message-body a { color: #58a6ff; }
+.message.user .message-body a { color: #79c0ff; }
+.message.assistant .message-body strong { color: #adbac7; }
+.message.assistant .message-body blockquote { border-left-color: #30363d; color: #6e7681; }
 .message-body p { margin-bottom: 12px; }
 .message-body p:last-child { margin-bottom: 0; }
 .message-body strong { font-weight: 600; }
