@@ -1,0 +1,9 @@
+/* lock screen - terminal style */
+.lock-screen {
+    position: fixed; inset: 0; z-index: 200;
+    background: #0a0a0a;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+    transition: opacity 0.3s ease;
+}
+.lock-screen.hidden { display: none; opacity: 0; pointer-events: none; }

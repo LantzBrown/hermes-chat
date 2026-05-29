@@ -2,69 +2,158 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0a0e14">
+    <meta name="apple-mobile-web-app-title" content="Hermes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
     <title>Hermes Agent</title>
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
 </head>
 <body>
-    <div class="top-bar">
-        <span class="top-bar-brand">hermes</span>
-        <span class="top-bar-right">
-            <span class="status" id="connectionStatus">
-                <span class="status-dot" id="statusDot"></span>
-                <span class="status-text" id="statusText">...</span>
-            </span>
-            <span class="top-bar-sep">|</span>
-            <button class="top-btn" id="settingsBtn">settings</button>
-            <span class="top-bar-sep">|</span>
-            <button class="top-btn" id="newChatBtn">new</button>
-            <span class="top-bar-sep">|</span>
-            <button class="top-btn" id="sessionsBtn">sessions</button>
-        </span>
-    </div>
-    <div class="session-picker" id="sessionPicker">
-        <div class="session-picker-header">PAST SESSIONS <button class="close-btn" id="closeSessions">&#10005;</button></div>
-        <div class="session-list" id="sessionList"></div>
-    </div>
-    <div class="messages-container" id="messagesContainer">
-        <div class="welcome" id="welcomeScreen">
-            <div class="welcome-prompt">hermes@agent ~ $</div>
-            <div class="welcome-sub">ready. type a message to begin.</div>
+    <div class="lock-screen" id="lockScreen">
+        <div class="lock-card">
+            <div class="lock-prompt">hermes@agent ~ $</div>
+            <form id="lockForm">
+                <div class="lock-input-row">
+                    <span class="lock-prefix">password:</span>
+                    <input type="password" id="lockPassword" autocomplete="off" autofocus />
+                </div>
+                <button type="submit" class="lock-btn">unlock</button>
+            </form>
+            <div class="lock-error" id="lockError"></div>
         </div>
-        <div class="messages" id="messages"></div>
     </div>
-    <div class="input-area">
-        <div class="input-row">
-            <span class="input-prompt">&gt;</span>
-            <textarea id="messageInput" placeholder="" rows="1" autofocus></textarea>
-            <button class="send-btn" id="sendBtn" disabled>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            </button>
-            <button class="stop-btn" id="stopBtn" style="display:none">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-            </button>
+
+    <div class="app" id="mainApp" style="display:none">
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <span class="top-bar-brand">hermes</span>
+                <span class="top-bar-sep">|</span>
+                <span class="nav-tab active" data-tab="chat">chat</span>
+                <span class="nav-tab" data-tab="remote">remote</span>
+                <span class="nav-tab" data-tab="cron">cron</span>
+                <span class="nav-tab" data-tab="overview">overview</span>
+            </div>
+            <div class="top-bar-right">
+                <span class="top-bar-btn" id="sessionsBtn">sessions</span>
+                <span class="top-bar-sep">|</span>
+                <span class="connection-status"><span class="status-dot" id="statusDot"></span><span class="status-text" id="statusText">...</span></span>
+                <span class="top-bar-sep">|</span>
+                <span class="top-bar-btn" id="settingsBtn">&#9881;</span>
+            </div>
         </div>
-        <div class="input-hint" id="inputHint">enter to send / shift+enter for newline</div>
+
+        <div class="session-panel" id="sessionPicker">
+            <div class="session-panel-header"><span>SESSIONS</span><span class="session-close" id="closeSessions">&times;</span></div>
+            <div class="session-panel-new"><button class="session-new-btn" id="newChatBtn">+ new session</button></div>
+            <div class="session-list" id="sessionList"></div>
+        </div>
+
+        <div class="panels">
+            <div class="tab-panel active" id="tabChat">
+                <div class="welcome" id="welcomeScreen">
+                    <div class="ascii-banner" id="asciiBanner"></div>
+                    <div class="welcome-subline">ready. type a message to begin.</div>
+                </div>
+                <div class="messages" id="messages"></div>
+                <div class="input-area">
+                    <div class="cmd-palette" id="cmdPalette"></div>
+                    <div class="input-row">
+                        <span class="input-prompt">&gt;</span>
+                        <textarea id="messageInput" placeholder="" rows="1"></textarea>
+                        <button class="send-btn" id="sendBtn" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                        <button class="stop-btn" id="stopBtn" style="display:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+                    </div>
+                    <div class="input-footer"><span class="input-hint" id="inputHint">enter to send / shift+enter for newline</span></div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="tabRemote">
+                <div class="remote-desktop-container">
+                    <div class="remote-toolbar">
+                        <div class="remote-status"><span class="remote-dot" id="remoteDot"></span><span id="remoteStatusText">disconnected</span></div>
+                        <div class="remote-controls">
+                            <button class="remote-btn active" id="rdTrackpad">&#128433;</button>
+                            <button class="remote-btn" id="rdTouch">&#128070;</button>
+                            <button class="remote-btn" id="rdScroll">&#8613;</button>
+                            <button class="remote-btn" id="rdKeyboard">&#9000;</button>
+                            <button class="remote-btn" id="rdKeys">&#8984;</button>
+                            <button class="remote-btn" id="rdFullscreen">&#9114;</button>
+                        </div>
+                        <span class="remote-fps" id="remoteFps">-- fps</span>
+                    </div>
+                    <div class="remote-screen" id="remoteScreen">
+                        <canvas id="remoteCanvas"></canvas>
+                        <div class="remote-touch-cursor" id="remoteTouchCursor"></div>
+                        <div class="remote-connect-msg" id="remoteConnectMsg">
+                            <h3>Remote Desktop</h3>
+                            <p>Enter your remote desktop server URL in Settings to connect.</p>
+                            <p class="remote-hint">Run <code>./start.sh</code> on your Mac to start the server.</p>
+                            <div class="remote-url-input">
+                                <input type="text" id="remoteUrlInput" placeholder="ws://localhost:8644/ws" />
+                                <button id="remoteConnectBtn" class="term-btn term-btn-gold">connect</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="text" id="remoteHiddenInput" class="remote-hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                </div>
+            </div>
+
+            <div class="tab-panel" id="tabCron">
+                <div class="panel-scroll">
+                    <div class="panel-header"><span class="panel-title">CRON JOBS</span><span class="panel-refresh" id="cronRefreshLabel"></span></div>
+                    <div id="cronContent"><div class="panel-loading">loading...</div></div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="tabOverview">
+                <div class="panel-scroll">
+                    <div class="panel-header"><span class="panel-title">OVERVIEW</span><span class="panel-refresh" id="overviewRefreshLabel"></span></div>
+                    <div class="summary-bar" id="summaryBar"></div>
+                    <div class="overview-section"><div class="section-title">ACTIVE AGENTS</div><div id="activeAgents" class="card-list"><div class="panel-loading">loading...</div></div></div>
+                    <div class="overview-section"><div class="section-title">RECENT ACTIVITY</div><div id="recentActivity" class="card-list"><div class="panel-loading">loading...</div></div></div>
+                </div>
+            </div>
+        </div>
     </div>
+
     <div class="modal-overlay" id="settingsModal">
         <div class="modal">
-            <div class="modal-header"><span>SETTINGS</span><button class="close-btn" id="closeSettingsBtn">&#10005;</button></div>
+            <div class="modal-header"><span>SETTINGS</span><span class="modal-close" id="closeSettingsBtn">&times;</span></div>
             <div class="modal-body">
-                <div class="setting-group"><label>API SERVER URL</label><input type="text" id="apiUrl" placeholder="http://localhost:8642" /></div>
-                <div class="setting-group"><label>API KEY</label><input type="password" id="apiKey" placeholder="Your API_SERVER_KEY" /></div>
+                <div class="setting-group"><label>API SERVER URL</label><input type="text" id="apiUrl" placeholder="http://localhost:8642" /><small>The URL where your Hermes gateway API server is running.</small></div>
+                <div class="setting-group"><label>API KEY</label><input type="password" id="apiKey" placeholder="Your API_SERVER_KEY" /><small>The API_SERVER_KEY from your Hermes .env file.</small></div>
+                <div class="setting-group"><label>SESSION ID <span class="optional">(optional)</span></label><input type="text" id="sessionId" placeholder="Leave blank for new sessions" /><small>Reuse a specific Hermes session for context continuity.</small></div>
+                <div class="setting-group"><label>REMOTE DESKTOP URL</label><input type="text" id="remoteWsUrl" placeholder="ws://localhost:8644/ws" /><small>WebSocket URL of the remote desktop server.</small></div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancelSettingsBtn">cancel</button>
-                <button class="btn btn-primary" id="saveSettingsBtn">save</button>
+                <button class="term-btn" id="cancelSettingsBtn">cancel</button>
+                <button class="term-btn term-btn-gold" id="saveSettingsBtn">save</button>
             </div>
         </div>
     </div>
-    <script src="app.js?v=12"></script>
+
+    <script>
+    // ASCII art banner with gold gradient
+    (function() {
+        var b = document.getElementById('asciiBanner');
+        if (!b) return;
+        var lines = [
+            {t:'\u2588\u2588\u2557  \u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2557       \u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2557   \u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557',c:'#FFD700'},
+            {t:'\u2588\u2588\u2551  \u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u2557\u2588\u2588\u2554\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u2557\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u2557      \u2588\u2588\u2554\u2550\u2588\u2588\u2557\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u2557 \u2588\u2588\u2554\u2550\u2550\u2550\u2550\u2557\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2551\u255a\u2550\u2550\u2588\u2588\u2554\u2550\u2550\u2557',c:'#FFD700'},
+            {t:'\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2554\u2588\u2588\u2588\u2588\u2554\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551\u2588\u2588\u2551 \u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2554\u2588\u2588\u2557\u2588\u2588\u2551   \u2588\u2588\u2551',c:'#FFBF00'},
+            {t:'\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2557 \u2588\u2588\u2554\u2550\u2588\u2588\u2557\u2588\u2588\u2551\u255a\u2588\u2588\u2554\u2557\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2557 \u255a\u2550\u2550\u2550\u2550\u2588\u2588\u2551\u255a\u2550\u2550\u2550\u2550\u2557\u2588\u2588\u2554\u2550\u2588\u2588\u2551\u2588\u2588\u2551   \u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2557 \u2588\u2588\u2551\u255a\u2588\u2588\u2557\u2588\u2588\u2551   \u2588\u2588\u2551',c:'#FFBF00'},
+            {t:'\u2588\u2588\u2551  \u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2551  \u2588\u2588\u2551\u2588\u2588\u2551 \u255a\u2550\u2550\u2557\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2551      \u2588\u2588\u2551  \u2588\u2588\u2551\u255a\u2588\u2588\u2588\u2588\u2588\u2554\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2551 \u255a\u2588\u2588\u2588\u2588\u2551   \u2588\u2588\u2551',c:'#CD7F32'},
+            {t:'\u255a\u2550\u2550\u2557 \u255a\u2550\u2550\u2557\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2557\u255a\u2550\u2550\u2557 \u255a\u2550\u2550\u2557\u255a\u2550\u2550\u2557   \u255a\u2550\u2550\u2557\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2557\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2557      \u255a\u2550\u2550\u2557  \u255a\u2550\u2550\u2557 \u255a\u2550\u2550\u2550\u2550\u2557 \u255a\u2550\u2550\u2550\u2550\u2557\u255a\u2550\u2550\u2557  \u255a\u2550\u2550\u2557   \u255a\u2550\u2550\u2557',c:'#CD7F32'}
+        ];
+        b.innerHTML = lines.map(function(l){return '<span style="color:'+l.c+'">'+l.t+'</span>'}).join('\n');
+    })();
+    </script>
+    <script src="app.js?v=13"></script>
 </body>
 </html>
