@@ -1,19 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Hermes Agent</title>
+<html><head><title>Hermes</title>
 <script>
-var ptk = 1;
-var l = window.location;
-l.replace(
-  l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-  l.pathname.split('/').slice(0, 1 + ptk).join('/') + '/?/' +
-  l.pathname.slice(1).split('/').slice(ptk).join('/').replace(/&/g, '~and~') +
-  (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-  l.hash
-);
-</script>
-</head>
-<body></body>
-</html>
+var ptk=1,l=window.location;
+l.replace(l.protocol+'//'+l.hostname+(l.port?':'+l.port:'')+l.pathname.split('/').slice(0,1+ptk).join('/')+'/?/'+l.pathname.slice(1).split('/').slice(ptk).join('/').replace(/&/g,'~and~')+(l.search?'&'+l.search.slice(1).replace(/&/g,'~and~'):'')+l.hash);
+</script></head><body></body></html>
