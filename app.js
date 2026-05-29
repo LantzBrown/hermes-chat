@@ -89,6 +89,7 @@
     loadSessionsFromServer();
     messageInput.focus();
     setInterval(checkHealth, 30000);
+    setupNavTabs();
 
     // ── Events ──
     messageInput.addEventListener('input', onInput);
@@ -109,6 +110,159 @@
             sendMessage();
         });
     });
+
+    // ── Nav Tabs ──
+    function setupNavTabs() {
+        const tabs = document.querySelectorAll('.nav-tab');
+        const panels = document.querySelectorAll('.tab-panel');
+        let cronInterval = null;
+        let overviewInterval = null;
+
+        function switchTab(name) {
+            tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+            panels.forEach(p => p.classList.toggle('active', p.id === 'tab' + name.charAt(0).toUpperCase() + name.slice(1)));
+            // Show/hide session list based on tab
+            const sidebarContent = $('.sidebar-content');
+            const newChatBtn = $('#newChatBtn');
+            if (name === 'chat') {
+                sidebarContent.style.display = '';
+                newChatBtn.style.display = '';
+            } else {
+                sidebarContent.style.display = 'none';
+                newChatBtn.style.display = 'none';
+            }
+            // Manage intervals
+            clearInterval(cronInterval);
+            clearInterval(overviewInterval);
+            if (name === 'cron') { loadCronJobs(); cronInterval = setInterval(loadCronJobs, 30000); }
+            if (name === 'overview') { loadOverview(); overviewInterval = setInterval(loadOverview, 10000); }
+        }
+
+        tabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+    }
+
+    // ── Cron Jobs ──
+    async function loadCronJobs() {
+        const el = $('#cronContent');
+        const label = $('#cronRefreshLabel');
+        try {
+            const r = await api('/api/jobs');
+            if (!r.ok) throw new Error(r.status);
+            const d = await r.json();
+            const jobs = d.jobs || [];
+            label.textContent = 'Updated ' + new Date().toLocaleTimeString();
+            if (jobs.length === 0) {
+                el.innerHTML = '<div class="empty-state">No cron jobs configured</div>';
+                return;
+            }
+            el.innerHTML = jobs.map(j => {
+                const enabled = j.enabled !== false;
+                const statusBadge = enabled ? '<span class="badge badge-green">Enabled</span>' : '<span class="badge badge-muted">Disabled</span>';
+                const lastRun = j.last_run_at ? new Date(j.last_run_at * 1000).toLocaleString() : 'Never';
+                const lastStatus = j.last_run_status === 'success' ? '<span class="badge badge-green">Success</span>'
+                    : j.last_run_status === 'error' ? '<span class="badge badge-red">Error</span>'
+                    : j.last_run_status ? '<span class="badge badge-orange">' + esc(j.last_run_status) + '</span>' : '<span class="badge badge-muted">—</span>';
+                return '<div class="info-card">' +
+                    '<div class="card-title">' + esc(j.name || 'Unnamed Job') + '</div>' +
+                    '<div class="card-meta">' +
+                    '<span class="meta-item"><span class="meta-label">Schedule:</span> ' + esc(j.schedule || '—') + '</span>' +
+                    '<span class="meta-item">' + statusBadge + '</span>' +
+                    '<span class="meta-item"><span class="meta-label">Last run:</span> ' + lastRun + '</span>' +
+                    '<span class="meta-item"><span class="meta-label">Status:</span> ' + lastStatus + '</span>' +
+                    '</div></div>';
+            }).join('');
+        } catch (err) {
+            label.textContent = '';
+            el.innerHTML = '<div class="empty-state">Failed to load cron jobs: ' + esc(err.message) + '</div>';
+        }
+    }
+
+    // ── Overview ──
+    async function loadOverview() {
+        const label = $('#overviewRefreshLabel');
+        try {
+            const r = await api('/api/sessions?limit=20');
+            if (!r.ok) throw new Error(r.status);
+            const d = await r.json();
+            const allSessions = d.data || [];
+            label.textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+            const active = allSessions.filter(s => !s.ended_at);
+            const totalCost = allSessions.reduce((s, x) => s + (x.estimated_cost_usd || 0), 0);
+            const totalMsgs = allSessions.reduce((s, x) => s + (x.message_count || 0), 0);
+
+            // Summary bar
+            $('#summaryBar').innerHTML = [
+                { val: allSessions.length, label: 'Total Sessions' },
+                { val: active.length, label: 'Active Agents' },
+                { val: '$' + totalCost.toFixed(4), label: 'Total Cost' },
+                { val: totalMsgs, label: 'Total Messages' },
+            ].map(s => '<div class="summary-card"><div class="sc-value">' + s.val + '</div><div class="sc-label">' + s.label + '</div></div>').join('');
+
+            // Active agents
+            const agentsEl = $('#activeAgents');
+            if (active.length === 0) {
+                agentsEl.innerHTML = '<div class="empty-state">No active agents</div>';
+            } else {
+                agentsEl.innerHTML = active.map(s => {
+                    const elapsed = s.started_at ? formatDuration(s.started_at * 1000, Date.now()) : '—';
+                    return cardHTML(s.title, [
+                        { label: 'Model', val: s.model || '—' },
+                        { label: 'Messages', val: s.message_count || 0 },
+                        { label: 'Tools', val: s.tool_call_count || 0 },
+                        { label: 'Tokens', val: ((s.input_tokens || 0) + (s.output_tokens || 0)).toLocaleString() },
+                        { label: 'Cost', val: '$' + (s.estimated_cost_usd || 0).toFixed(4) },
+                        { label: 'Active', val: elapsed },
+                    ]);
+                }).join('');
+            }
+
+            // Recent activity (last 10)
+            const recent = allSessions.slice(0, 10);
+            const recentEl = $('#recentActivity');
+            if (recent.length === 0) {
+                recentEl.innerHTML = '<div class="empty-state">No recent sessions</div>';
+            } else {
+                recentEl.innerHTML = recent.map(s => {
+                    const running = !s.ended_at;
+                    const errored = s.end_reason === 'error';
+                    const statusBadge = running ? '<span class="badge badge-blue">Running</span>'
+                        : errored ? '<span class="badge badge-red">Error</span>'
+                        : '<span class="badge badge-green">Completed</span>';
+                    const duration = s.started_at && s.ended_at ? formatDuration(s.started_at * 1000, s.ended_at * 1000)
+                        : s.started_at ? formatDuration(s.started_at * 1000, Date.now()) : '—';
+                    return cardHTML(s.title, [
+                        { label: 'Status', val: statusBadge, raw: true },
+                        { label: 'Duration', val: duration },
+                        { label: 'Messages', val: s.message_count || 0 },
+                        { label: 'Cost', val: '$' + (s.estimated_cost_usd || 0).toFixed(4) },
+                    ]);
+                }).join('');
+            }
+        } catch (err) {
+            label.textContent = '';
+            $('#summaryBar').innerHTML = '';
+            $('#activeAgents').innerHTML = '<div class="empty-state">Failed to load: ' + esc(err.message) + '</div>';
+            $('#recentActivity').innerHTML = '';
+        }
+    }
+
+    function cardHTML(title, metaItems) {
+        return '<div class="info-card">' +
+            '<div class="card-title">' + esc(title || 'Untitled') + '</div>' +
+            '<div class="card-meta">' +
+            metaItems.map(m => '<span class="meta-item"><span class="meta-label">' + m.label + ':</span> ' + (m.raw ? m.val : esc(String(m.val))) + '</span>').join('') +
+            '</div></div>';
+    }
+
+    function formatDuration(fromMs, toMs) {
+        const sec = Math.floor((toMs - fromMs) / 1000);
+        if (sec < 60) return sec + 's';
+        if (sec < 3600) return Math.floor(sec / 60) + 'm ' + (sec % 60) + 's';
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        return h + 'h ' + m + 'm';
+    }
 
     settingsModal.addEventListener('click', e => { if (e.target === settingsModal) closeSettings(); });
 
