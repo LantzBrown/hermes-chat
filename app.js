@@ -4,6 +4,7 @@
 
     const DEFAULT_API_URL = 'http://localhost:8642';
     const TUNNEL_URL = 'https://installing-ultram-ballet-lenders.trycloudflare.com';
+    const TUNNEL_URL_SOURCE = 'https://raw.githubusercontent.com/LantzBrown/hermes-chat/main/tunnel-url.json';
     const DEFAULT_API_KEY='bzJg4-OgW2sP13g8G7uAeEAkt7KciUGu6BQUq-_VZcw';
     const STORAGE_KEY = 'hermes-chat-config-v8';
 
@@ -455,15 +456,57 @@
             '\n\nYou can also just type anything to chat!', false);
     };
 
+    // ── Dynamic Tunnel URL Discovery ──
+    // If the hardcoded TUNNEL_URL is dead, fetch the latest from GitHub
+    let lastTunnelCheck = 0;
+    const TUNNEL_CHECK_COOLDOWN = 15000; // 15s cooldown between checks
+
+    async function discoverTunnelUrl() {
+        if (isLocal) return;
+        const now = Date.now();
+        if (now - lastTunnelCheck < TUNNEL_CHECK_COOLDOWN) return;
+        lastTunnelCheck = now;
+
+        try {
+            const resp = await fetch(TUNNEL_URL_SOURCE + '?t=' + now, { cache: 'no-store' });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.url && data.url !== config.apiUrl && data.url.startsWith('https://')) {
+                console.log('[tunnel] Discovered new URL:', data.url);
+                config.apiUrl = data.url;
+                saveConfig();
+            }
+        } catch (e) {
+            console.log('[tunnel] Discovery failed:', e.message);
+        }
+    }
+
+    // Try discovery on first load if not local
+    if (!isLocal) {
+        discoverTunnelUrl();
+    }
+
     // ── UI Functions ──
 
     function checkHealth() {
         const dot = connectionStatus.querySelector('.status-dot');
         const txt = connectionStatus.querySelector('.status-text');
         api('/health').then(r => {
-            dot.className = r.ok ? 'status-dot connected' : 'status-dot error';
-            txt.textContent = r.ok ? 'Connected' : 'Error';
-        }).catch(() => { dot.className = 'status-dot error'; txt.textContent = 'Offline'; });
+            if (r.ok) {
+                dot.className = 'status-dot connected';
+                txt.textContent = 'Connected';
+            } else {
+                dot.className = 'status-dot error';
+                txt.textContent = 'Error';
+                // Current URL might be dead — try discovering the latest
+                if (!isLocal) discoverTunnelUrl();
+            }
+        }).catch(() => {
+            dot.className = 'status-dot error';
+            txt.textContent = 'Offline';
+            // Current URL is dead — try discovering the latest
+            if (!isLocal) discoverTunnelUrl();
+        });
     }
 
     function autoResize() {
