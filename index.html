@@ -2,199 +2,69 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Hermes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#000000">
-    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0e14">
     <title>Hermes Agent</title>
-    <link rel="stylesheet" href="style.css?v=10">
-    <link rel="stylesheet" href="lock.css">
+    <link rel="stylesheet" href="style.css?v=12">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
 </head>
 <body>
-    <!-- Lock Screen -->
-    <div class="lock-screen" id="lockScreen">
-        <div class="lock-card">
-            <div class="lock-icon">⚕</div>
-            <h1>Hermes Agent</h1>
-            <p>Enter your password to continue</p>
-            <form id="lockForm">
-                <input type="password" id="lockPassword" placeholder="Password" autocomplete="off" autofocus />
-                <button type="submit" class="lock-btn">Unlock</button>
-            </form>
-            <div class="lock-error" id="lockError"></div>
-        </div>
+    <div class="top-bar">
+        <span class="top-bar-brand">hermes</span>
+        <span class="top-bar-right">
+            <span class="status" id="connectionStatus">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-text" id="statusText">...</span>
+            </span>
+            <span class="top-bar-sep">|</span>
+            <button class="top-btn" id="settingsBtn">settings</button>
+            <span class="top-bar-sep">|</span>
+            <button class="top-btn" id="newChatBtn">new</button>
+            <span class="top-bar-sep">|</span>
+            <button class="top-btn" id="sessionsBtn">sessions</button>
+        </span>
     </div>
-
-    <!-- Main App -->
-    <div class="terminal-app" id="mainApp" style="display:none">
-        <!-- Top bar -->
-        <div class="topbar">
-            <div class="topbar-left">
-                <span class="topbar-logo">⚕ hermes</span>
-                <div class="topbar-tabs">
-                    <button class="topbar-tab active" data-tab="chat">chat</button>
-                    <button class="topbar-tab" data-tab="remote">remote</button>
-                    <button class="topbar-tab" data-tab="cron">cron</button>
-                    <button class="topbar-tab" data-tab="overview">overview</button>
-                </div>
-            </div>
-            <div class="topbar-right">
-                <span class="connection-dot" id="connectionDot"></span>
-                <button class="topbar-btn" id="newChatBtn" title="New Chat">+</button>
-                <button class="topbar-btn" id="settingsBtn" title="Settings">⚙</button>
-            </div>
-        </div>
-
-        <!-- Chat Tab -->
-        <div class="term-panel active" id="tabChat">
-            <div class="term-output" id="termOutput">
-                <div class="term-welcome" id="welcomeScreen">
-                    <pre class="ascii-art">
- ██╗  ██╗███████╗██████╗ ███╗   ███╗███████╗███████╗
- ██║  ██║██╔════╝██╔══██╗████╗ ████║██╔════╝██╔════╝
- ███████║█████╗  ██████╔╝██╔████╔██║█████╗  ███████╗
- ██╔══██║██╔══╝  ██╔══██╗██║╚██╔╝██║██╔══╝  ╚════██║
- ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║███████╗███████║
- ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝</pre>
-                    <div class="term-welcome-text">hermes agent terminal v1.0</div>
-                    <div class="term-welcome-text">type a message to begin. / for commands.</div>
-                </div>
-                <div class="term-messages" id="messages"></div>
-            </div>
-        </div>
-
-        <!-- Remote Desktop Tab -->
-        <div class="term-panel" id="tabRemote">
-            <div class="remote-desktop-container">
-                <div class="remote-toolbar">
-                    <div class="remote-status" id="remoteStatus">
-                        <span class="remote-dot" id="remoteDot"></span>
-                        <span id="remoteStatusText">disconnected</span>
-                    </div>
-                    <div class="remote-controls">
-                        <button class="remote-btn active" id="rdTrackpad" title="Trackpad mode">🖱️</button>
-                        <button class="remote-btn" id="rdTouch" title="Direct touch">👆</button>
-                        <button class="remote-btn" id="rdScroll" title="Scroll mode">↕️</button>
-                        <button class="remote-btn" id="rdKeyboard" title="Keyboard">⌨️</button>
-                        <button class="remote-btn" id="rdKeys" title="Special keys">⌘</button>
-                        <button class="remote-btn" id="rdFullscreen" title="Fullscreen">⛶</button>
-                    </div>
-                    <span class="remote-fps" id="remoteFps">-- fps</span>
-                </div>
-                <div class="remote-screen" id="remoteScreen">
-                    <canvas id="remoteCanvas"></canvas>
-                    <div class="remote-touch-cursor" id="remoteTouchCursor"></div>
-                    <div class="remote-connect-msg" id="remoteConnectMsg">
-                        <div class="remote-connect-icon">🖥️</div>
-                        <h3>Remote Desktop</h3>
-                        <p>Enter your remote desktop server URL in Settings to connect.</p>
-                        <p class="remote-hint">Run <code>./start.sh</code> on your Mac to start the server.</p>
-                        <div class="remote-url-input">
-                            <input type="text" id="remoteUrlInput" placeholder="ws://localhost:8644/ws" />
-                            <button id="remoteConnectBtn" class="term-btn-primary">Connect</button>
-                        </div>
-                    </div>
-                </div>
-                <input type="text" id="remoteHiddenInput" class="remote-hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-            </div>
-        </div>
-
-        <!-- Cron Tab -->
-        <div class="term-panel" id="tabCron">
-            <div class="panel-scroll">
-                <div class="panel-header">
-                    <span class="panel-title">cron jobs</span>
-                    <span class="panel-refresh" id="cronRefreshLabel"></span>
-                </div>
-                <div id="cronContent" class="cron-content">
-                    <div class="panel-loading">loading cron jobs...</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Overview Tab -->
-        <div class="term-panel" id="tabOverview">
-            <div class="panel-scroll">
-                <div class="panel-header">
-                    <span class="panel-title">overview</span>
-                    <span class="panel-refresh" id="overviewRefreshLabel"></span>
-                </div>
-                <div class="summary-bar" id="summaryBar"></div>
-                <div class="overview-section">
-                    <div class="section-title">active agents</div>
-                    <div id="activeAgents" class="card-list">
-                        <div class="panel-loading">loading...</div>
-                    </div>
-                </div>
-                <div class="overview-section">
-                    <div class="section-title">recent activity</div>
-                    <div id="recentActivity" class="card-list">
-                        <div class="panel-loading">loading...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Terminal Input -->
-        <div class="term-input-area" id="termInputArea">
-            <div class="cmd-palette" id="cmdPalette">
-                <div class="cmd-palette-header">commands</div>
-            </div>
-            <div class="term-input-line">
-                <span class="term-prompt">&gt;</span>
-                <textarea id="messageInput" placeholder="type a message..." rows="1"></textarea>
-                <button class="send-btn" id="sendBtn" disabled>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                </button>
-                <button class="stop-btn" id="stopBtn" style="display:none">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-                </button>
-            </div>
-        </div>
+    <div class="session-picker" id="sessionPicker">
+        <div class="session-picker-header">PAST SESSIONS <button class="close-btn" id="closeSessions">&#10005;</button></div>
+        <div class="session-list" id="sessionList"></div>
     </div>
-
-    <!-- Settings Modal -->
+    <div class="messages-container" id="messagesContainer">
+        <div class="welcome" id="welcomeScreen">
+            <div class="welcome-prompt">hermes@agent ~ $</div>
+            <div class="welcome-sub">ready. type a message to begin.</div>
+        </div>
+        <div class="messages" id="messages"></div>
+    </div>
+    <div class="input-area">
+        <div class="input-row">
+            <span class="input-prompt">&gt;</span>
+            <textarea id="messageInput" placeholder="" rows="1" autofocus></textarea>
+            <button class="send-btn" id="sendBtn" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+            <button class="stop-btn" id="stopBtn" style="display:none">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </button>
+        </div>
+        <div class="input-hint" id="inputHint">enter to send / shift+enter for newline</div>
+    </div>
     <div class="modal-overlay" id="settingsModal">
         <div class="modal">
-            <div class="modal-header">
-                <span class="modal-title">settings</span>
-                <button class="modal-close" id="closeSettingsBtn">✕</button>
-            </div>
+            <div class="modal-header"><span>SETTINGS</span><button class="close-btn" id="closeSettingsBtn">&#10005;</button></div>
             <div class="modal-body">
-                <div class="setting-group">
-                    <label>API Server URL</label>
-                    <input type="text" id="apiUrl" placeholder="http://localhost:8642" />
-                    <small id="settingsNote">The URL where your Hermes gateway API server is running.</small>
-                </div>
-                <div class="setting-group">
-                    <label>API Key</label>
-                    <input type="password" id="apiKey" placeholder="Your API_SERVER_KEY" />
-                    <small>The API_SERVER_KEY from your Hermes .env file.</small>
-                </div>
-                <div class="setting-group">
-                    <label>Session ID <span class="optional">(optional)</span></label>
-                    <input type="text" id="sessionId" placeholder="Leave blank for new sessions" />
-                    <small>Reuse a specific Hermes session for context continuity.</small>
-                </div>
-                <div class="setting-group">
-                    <label>Remote Desktop URL</label>
-                    <input type="text" id="remoteWsUrl" placeholder="ws://localhost:8644/ws" />
-                    <small>WebSocket URL of the remote desktop server.</small>
-                </div>
+                <div class="setting-group"><label>API SERVER URL</label><input type="text" id="apiUrl" placeholder="http://localhost:8642" /></div>
+                <div class="setting-group"><label>API KEY</label><input type="password" id="apiKey" placeholder="Your API_SERVER_KEY" /></div>
             </div>
             <div class="modal-footer">
-                <button class="term-btn" id="cancelSettingsBtn">cancel</button>
-                <button class="term-btn-primary" id="saveSettingsBtn">save</button>
+                <button class="btn btn-secondary" id="cancelSettingsBtn">cancel</button>
+                <button class="btn btn-primary" id="saveSettingsBtn">save</button>
             </div>
         </div>
     </div>
-
-    <script src="app.js?v=10"></script>
+    <script src="app.js?v=12"></script>
 </body>
 </html>
