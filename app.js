@@ -161,7 +161,7 @@
 
     function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); }
 
-    function getApiUrl() { return (config.apiUrl || (isLocal ? DEFAULT_API_URL : TUNNEL_URL)).replace(/\\/+$/, ''); }
+    function getApiUrl() { return (config.apiUrl || (isLocal ? DEFAULT_API_URL : TUNNEL_URL)).replace(/\/+$/, ''); }
 
     async function api(path, opts = {}) {
         const headers = { 'Content-Type': 'application/json', ...opts.headers };
