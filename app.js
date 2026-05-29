@@ -848,6 +848,7 @@
         $('#apiUrl').value = config.apiUrl || '';
         $('#apiKey').value = config.apiKey || '';
         $('#sessionId').value = config.sessionId || '';
+        $('#remoteWsUrl').value = rdConfig.wsUrl || '';
         settingsModal.classList.add('active');
         closeCmdPalette();
     }
@@ -856,6 +857,13 @@
         config.apiUrl = $('#apiUrl').value.replace(/\/+$/, '') || (isLocal ? DEFAULT_API_URL : TUNNEL_URL);
         config.apiKey = $('#apiKey').value.trim() || DEFAULT_API_KEY;
         config.sessionId = $('#sessionId').value.trim();
+        // Save remote desktop URL
+        const newRdUrl = $('#remoteWsUrl').value.trim();
+        if (newRdUrl !== rdConfig.wsUrl) {
+            rdConfig.wsUrl = newRdUrl;
+            localStorage.setItem(RD_STORAGE_KEY, JSON.stringify(rdConfig));
+            if ($('#remoteUrlInput')) $('#remoteUrlInput').value = newRdUrl;
+        }
         saveConfig(); closeSettings(); checkHealth(); loadSessionsFromServer();
     }
 

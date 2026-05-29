@@ -199,6 +199,11 @@
                     <input type="text" id="sessionId" placeholder="Leave blank for new sessions" />
                     <small>Reuse a specific Hermes session for context continuity.</small>
                 </div>
+                <div class="setting-group">
+                    <label>🖥️ Remote Desktop URL</label>
+                    <input type="text" id="remoteWsUrl" placeholder="ws://localhost:8644/ws" />
+                    <small>WebSocket URL of the remote desktop server. Run <code>./start.sh</code> on your Mac to start it.</small>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="cancelSettingsBtn">Cancel</button>
