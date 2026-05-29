@@ -490,20 +490,78 @@
             // Non-streaming fallback (used when streaming fails or returns no content)
             if (!fullContent) {
                 removeThinking();
-                updateThinkingLabel('Hermes is responding...');
-                const resp = await api('/api/sessions/' + activeSessionId + '/chat', {
-                    method: 'POST',
-                    body: JSON.stringify({ message: text }),
-                    signal: abortController.signal,
-                });
-                if (!resp.ok) {
-                    const errText = await resp.text();
-                    let errMsg;
-                    try { errMsg = JSON.parse(errText).error?.message || errText; } catch { errMsg = errText; }
-                    throw new Error(resp.status + ': ' + errMsg);
+                showThinking('Hermes is thinking...');
+
+                // Poll session messages for activity updates while waiting
+                let pollCount = 0;
+                const seenToolCalls = new Set();
+                const activityLabels = [
+                    'Hermes is thinking...',
+                    'Working on your request...',
+                    'Processing...',
+                    'Still working...',
+                    'Almost there...'
+                ];
+                const pollInterval = setInterval(async () => {
+                    pollCount++;
+                    try {
+                        const msgResp = await api('/api/sessions/' + activeSessionId + '/messages');
+                        if (msgResp.ok) {
+                            const msgData = await msgResp.json();
+                            const msgs = msgData.data || [];
+                            // Find new tool calls
+                            for (const m of msgs) {
+                                if (m.role === 'assistant' && m.tool_calls) {
+                                    for (const tc of m.tool_calls) {
+                                        const name = tc.function?.name || tc.name || 'tool';
+                                        const key = name + '_' + (tc.id || '');
+                                        if (!seenToolCalls.has(key)) {
+                                            seenToolCalls.add(key);
+                                            if (!activityStarted) { showActivityLog(); activityStarted = true; }
+                                            addActivityItem('🔧', 'Running ' + name + '...');
+                                            updateThinkingLabel('Running ' + name + '...');
+                                        }
+                                    }
+                                }
+                                // Show tool results
+                                if (m.role === 'tool' && m.name) {
+                                    const key = 'result_' + m.name + '_' + (m.tool_call_id || '');
+                                    if (!seenToolCalls.has(key)) {
+                                        seenToolCalls.add(key);
+                                        if (!activityStarted) { showActivityLog(); activityStarted = true; }
+                                        addActivityItem('✅', m.name + ' done');
+                                    }
+                                }
+                            }
+                            // If no tool calls found yet, cycle through generic labels
+                            if (seenToolCalls.size === 0 && pollCount > 1) {
+                                const labelIdx = Math.min(pollCount - 1, activityLabels.length - 1);
+                                updateThinkingLabel(activityLabels[labelIdx]);
+                            }
+                        }
+                    } catch {}
+                    scrollToBottom();
+                }, 2500);
+
+                try {
+                    const resp = await api('/api/sessions/' + activeSessionId + '/chat', {
+                        method: 'POST',
+                        body: JSON.stringify({ message: text }),
+                        signal: abortController.signal,
+                    });
+                    clearInterval(pollInterval);
+                    if (!resp.ok) {
+                        const errText = await resp.text();
+                        let errMsg;
+                        try { errMsg = JSON.parse(errText).error?.message || errText; } catch { errMsg = errText; }
+                        throw new Error(resp.status + ': ' + errMsg);
+                    }
+                    const fd = await resp.json();
+                    fullContent = fd.message?.content || fd.content || 'No response.';
+                } catch (pollErr) {
+                    clearInterval(pollInterval);
+                    throw pollErr;
                 }
-                const fd = await resp.json();
-                fullContent = fd.message?.content || fd.content || 'No response.';
                 if (!streamingOk) {
                     const msg = appendMessage('assistant', '', true);
                     bodyEl = msg.bodyEl;
