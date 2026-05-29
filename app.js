@@ -7,7 +7,7 @@ const DEFAULT_API_URL = 'http://localhost:8642';
 const TUNNEL_URL = 'https://continuing-raleigh-respectively-now.trycloudflare.com';
 const TUNNEL_URL_SOURCE = 'https://raw.githubusercontent.com/NousResearch/hermes-agent/main/tunnel-url.txt';
 const DEFAULT_API_KEY = 'bzJg4-OgW2sP13g8G7uAeEAkt7KciUGu6BQUq-_VZcw';
-const STORAGE_KEY = 'hermes-chat-config-v9';
+const STORAGE_KEY = 'hermes-chat-config-v8';
 
 // ── Shortcuts ──
 const q = (sel) => document.querySelector(sel);
