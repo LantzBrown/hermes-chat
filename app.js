@@ -5,7 +5,7 @@
 'use strict';
 
 // ── Config ──
-const DEFAULT_API_URL = 'http://localhost:8642';
+const DEFAULT_API_URL = '';  // auto-discovered via tunnel
 const TUNNEL_URL_SOURCES = [
   'https://raw.githubusercontent.com/LantzBrown/hermes-chat/main/tunnel-url.json',
   'https://raw.githubusercontent.com/NousResearch/hermes-agent/main/tunnel-url.txt',
@@ -30,7 +30,7 @@ function loadConfig() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     return {
       apiUrl: saved.apiUrl || DEFAULT_API_URL,
-      apiKey: saved.apiKey || '',
+      apiKey: saved.apiKey || 'bzJg4-OgW2sP13g8G7uAeEAkt7KciUGu6BQUq-_VZcw',
       password: saved.password || '',
       accent: saved.accent || '#d4a039',
     };
@@ -82,14 +82,17 @@ async function checkHealth() {
   dot.className = 'status-dot checking';
   text.textContent = 'checking...';
 
-  try {
-    const res = await api('/health', { _timeout: 5000 });
-    if (res.ok) {
-      dot.className = 'status-dot online';
-      text.textContent = 'connected';
-      return 'online';
-    }
-  } catch {}
+  // If we have a configured URL, try it first
+  if (config.apiUrl) {
+    try {
+      const res = await api('/health', { _timeout: 5000 });
+      if (res.ok) {
+        dot.className = 'status-dot online';
+        text.textContent = 'connected';
+        return 'online';
+      }
+    } catch {}
+  }
 
   // Try tunnel URLs
   for (const src of TUNNEL_URL_SOURCES) {
@@ -168,10 +171,13 @@ function unlockScreen() {
 // ── App Init ──
 async function initApp() {
   applyAccent(config.accent);
+  // Always try tunnel discovery on startup (GitHub Pages can't reach localhost)
   await checkHealth();
   healthTimer = setInterval(checkHealth, 30000);
   setupEventListeners();
   autoResizeInput();
+  // Focus input
+  setTimeout(() => $('#input').focus(), 100);
 }
 
 // ── Accent Color ──
