@@ -858,4 +858,403 @@
         config.sessionId = $('#sessionId').value.trim();
         saveConfig(); closeSettings(); checkHealth(); loadSessionsFromServer();
     }
+
+    // ── Remote Desktop ──
+    const RD_STORAGE_KEY = 'hermes-remote-desktop-v1';
+    let rdConfig = { wsUrl: '', quality: 60 };
+    let rdWs = null;
+    let rdScreenW = 1920, rdScreenH = 1080;
+    let rdMode = 'trackpad';
+    let rdFrameCount = 0;
+    let rdConnected = false;
+    let rdReconnectTimer = null;
+    let rdReconnectDelay = 1000;
+    let rdActive = false;
+
+    // Elements
+    const rdCanvas = $('#remoteCanvas');
+    const rdCtx = rdCanvas ? rdCanvas.getContext('2d') : null;
+    const rdDot = $('#remoteDot');
+    const rdStatusText = $('#remoteStatusText');
+    const rdFps = $('#remoteFps');
+    const rdTouchCursor = $('#remoteTouchCursor');
+    const rdConnectMsg = $('#remoteConnectMsg');
+    const rdHiddenInput = $('#remoteHiddenInput');
+    const rdScreen = $('#remoteScreen');
+
+    // Load saved config
+    try {
+        const saved = JSON.parse(localStorage.getItem(RD_STORAGE_KEY));
+        if (saved) rdConfig = { ...rdConfig, ...saved };
+    } catch {}
+
+    // Auto-detect WS URL
+    if (!rdConfig.wsUrl) {
+        if (isLocal) {
+            rdConfig.wsUrl = 'ws://localhost:8644/ws';
+        }
+    }
+
+    // Connect button
+    const rdConnectBtn = $('#remoteConnectBtn');
+    if (rdConnectBtn) {
+        rdConnectBtn.addEventListener('click', () => {
+            const url = $('#remoteUrlInput').value.trim();
+            if (url) {
+                rdConfig.wsUrl = url;
+                localStorage.setItem(RD_STORAGE_KEY, JSON.stringify(rdConfig));
+                rdConnect();
+            }
+        });
+    }
+
+    // Pre-fill URL input
+    if ($('#remoteUrlInput')) {
+        $('#remoteUrlInput').value = rdConfig.wsUrl || '';
+    }
+
+    function rdConnect() {
+        if (rdWs && (rdWs.readyState === WebSocket.CONNECTING || rdWs.readyState === WebSocket.OPEN)) {
+            rdWs.close();
+        }
+        if (!rdConfig.wsUrl) return;
+
+        console.log('[RemoteDesktop] Connecting to', rdConfig.wsUrl);
+        try {
+            rdWs = new WebSocket(rdConfig.wsUrl);
+        } catch (e) {
+            console.error('[RemoteDesktop] Connection error:', e);
+            rdScheduleReconnect();
+            return;
+        }
+
+        rdWs.onopen = () => {
+            rdConnected = true;
+            rdReconnectDelay = 1000;
+            if (rdDot) rdDot.classList.add('connected');
+            if (rdStatusText) rdStatusText.textContent = 'Connected';
+            if (rdConnectMsg) rdConnectMsg.classList.add('hidden');
+            console.log('[RemoteDesktop] Connected');
+        };
+
+        rdWs.onmessage = (evt) => {
+            try {
+                const msg = JSON.parse(evt.data);
+                if (msg.type === 'frame') {
+                    rdRenderFrame(msg.data);
+                    rdFrameCount++;
+                } else if (msg.type === 'info') {
+                    rdScreenW = msg.screen_width;
+                    rdScreenH = msg.screen_height;
+                    if (rdCanvas) {
+                        rdCanvas.width = rdScreenW;
+                        rdCanvas.height = rdScreenH;
+                    }
+                }
+            } catch {}
+        };
+
+        rdWs.onclose = () => {
+            rdConnected = false;
+            if (rdDot) rdDot.classList.remove('connected');
+            if (rdStatusText) rdStatusText.textContent = 'Disconnected';
+            rdScheduleReconnect();
+        };
+
+        rdWs.onerror = () => {};
+    }
+
+    function rdScheduleReconnect() {
+        if (rdReconnectTimer) clearTimeout(rdReconnectTimer);
+        if (!rdActive) return; // Don't reconnect if tab isn't visible
+        if (rdStatusText) rdStatusText.textContent = 'Reconnecting...';
+        rdReconnectTimer = setTimeout(() => {
+            rdReconnectTimer = null;
+            rdConnect();
+        }, rdReconnectDelay);
+        rdReconnectDelay = Math.min(rdReconnectDelay * 1.5, 10000);
+    }
+
+    function rdRenderFrame(b64) {
+        if (!rdCtx) return;
+        const img = new Image();
+        img.onload = () => {
+            rdCtx.drawImage(img, 0, 0, rdCanvas.width, rdCanvas.height);
+            URL.revokeObjectURL(img.src);
+        };
+        img.src = 'data:image/jpeg;base64,' + b64;
+    }
+
+    function rdSend(data) {
+        if (rdWs && rdWs.readyState === WebSocket.OPEN) {
+            rdWs.send(JSON.stringify({ type: 'control', ...data }));
+        }
+    }
+
+    function rdGetCoords(clientX, clientY) {
+        if (!rdCanvas) return { x: 0, y: 0 };
+        const rect = rdCanvas.getBoundingClientRect();
+        return {
+            x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
+            y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
+        };
+    }
+
+    // FPS counter
+    setInterval(() => {
+        if (rdFps) rdFps.textContent = rdFrameCount + ' fps';
+        rdFrameCount = 0;
+        if (rdWs && rdWs.readyState === WebSocket.OPEN) {
+            rdWs.send(JSON.stringify({ type: 'ping' }));
+        }
+    }, 1000);
+
+    // ── Trackpad Mode (default) ──
+    let tp = { startX: 0, startY: 0, lastX: 0, lastY: 0, startTime: 0, moved: false, longPress: null, dragging: false, touches: 0 };
+
+    function tpDown(e) {
+        e.preventDefault();
+        const t = e.touches ? e.touches[0] : e;
+        tp.touches = e.touches ? e.touches.length : 1;
+        tp.startX = t.clientX; tp.startY = t.clientY;
+        tp.lastX = t.clientX; tp.lastY = t.clientY;
+        tp.startTime = Date.now(); tp.moved = false; tp.dragging = false;
+
+        if (rdTouchCursor) {
+            rdTouchCursor.style.left = t.clientX + 'px';
+            rdTouchCursor.style.top = t.clientY + 'px';
+            rdTouchCursor.style.display = 'block';
+            rdTouchCursor.style.borderColor = 'rgba(88,166,255,0.8)';
+        }
+
+        if (tp.touches === 1) {
+            tp.longPress = setTimeout(() => {
+                if (!tp.moved) {
+                    rdSend({ action: 'rightclick', ...rdGetCoords(tp.startX, tp.startY) });
+                    if (rdTouchCursor) rdTouchCursor.style.borderColor = 'rgba(255,100,100,0.8)';
+                }
+            }, 500);
+        }
+    }
+
+    function tpMove(e) {
+        e.preventDefault();
+        const t = e.touches ? e.touches[0] : e;
+        const touches = e.touches ? e.touches.length : 1;
+        const dy = t.clientY - tp.lastY;
+        const dist = Math.abs(t.clientX - tp.startX) + Math.abs(t.clientY - tp.startY);
+
+        if (dist > 8) {
+            tp.moved = true;
+            if (tp.longPress) { clearTimeout(tp.longPress); tp.longPress = null; }
+        }
+
+        if (touches === 2 && e.touches) {
+            rdSend({ action: 'scroll', amount: Math.round(-dy * 0.5), x: 0.5, y: 0.5 });
+        } else if (touches === 1 && tp.moved) {
+            if (!tp.dragging) {
+                tp.dragging = true;
+                rdSend({ action: 'mousedown', ...rdGetCoords(tp.startX, tp.startY) });
+            }
+            const coords = rdGetCoords(t.clientX, t.clientY);
+            rdSend({ action: 'move', x: coords.x, y: coords.y });
+            if (rdTouchCursor) {
+                rdTouchCursor.style.left = t.clientX + 'px';
+                rdTouchCursor.style.top = t.clientY + 'px';
+            }
+        }
+
+        tp.lastX = t.clientX; tp.lastY = t.clientY;
+    }
+
+    function tpUp(e) {
+        if (tp.longPress) { clearTimeout(tp.longPress); tp.longPress = null; }
+        const elapsed = Date.now() - tp.startTime;
+
+        if (tp.dragging) {
+            rdSend({ action: 'mouseup', ...rdGetCoords(tp.lastX, tp.lastY) });
+            tp.dragging = false;
+        } else if (!tp.moved) {
+            const coords = rdGetCoords(tp.startX, tp.startY);
+            if (elapsed < 300) {
+                rdSend(tp.touches === 2 ? { action: 'rightclick', ...coords } : { action: 'click', ...coords });
+            }
+        }
+        if (rdTouchCursor) rdTouchCursor.style.display = 'none';
+        tp.touches = 0;
+    }
+
+    // ── Direct Touch Mode ──
+    function touchTap(e) {
+        e.preventDefault();
+        const t = e.touches ? e.touches[0] : e;
+        rdSend({ action: 'click', ...rdGetCoords(t.clientX, t.clientY) });
+    }
+
+    // ── Scroll Mode ──
+    let scrollLastY = 0;
+    function scrollDown(e) { e.preventDefault(); scrollLastY = (e.touches ? e.touches[0] : e).clientY; }
+    function scrollMove(e) {
+        e.preventDefault();
+        const t = e.touches ? e.touches[0] : e;
+        const dy = t.clientY - scrollLastY;
+        if (Math.abs(dy) > 5) {
+            rdSend({ action: 'scroll', amount: Math.round(-dy * 0.3), x: 0.5, y: 0.5 });
+            scrollLastY = t.clientY;
+        }
+    }
+
+    // ── Bind events based on mode ──
+    function rdBindEvents() {
+        if (!rdScreen) return;
+        const el = rdScreen;
+        el.onmousedown = el.ontouchstart = el.onmousemove = el.ontouchmove = el.onmouseup = el.ontouchend = el.ontouchcancel = null;
+        el.removeEventListener('mousedown', tpDown); el.removeEventListener('touchstart', tpDown);
+        el.removeEventListener('mousemove', tpMove); el.removeEventListener('touchmove', tpMove);
+        el.removeEventListener('mouseup', tpUp); el.removeEventListener('touchend', tpUp);
+        el.removeEventListener('touchcancel', tpUp);
+        el.removeEventListener('mousedown', touchTap); el.removeEventListener('touchstart', touchTap);
+        el.removeEventListener('mousedown', scrollDown); el.removeEventListener('touchstart', scrollDown);
+        el.removeEventListener('mousemove', scrollMove); el.removeEventListener('touchmove', scrollMove);
+
+        const opts = { passive: false };
+        if (rdMode === 'trackpad') {
+            el.addEventListener('mousedown', tpDown, opts);
+            el.addEventListener('touchstart', tpDown, opts);
+            el.addEventListener('mousemove', tpMove, opts);
+            el.addEventListener('touchmove', tpMove, opts);
+            el.addEventListener('mouseup', tpUp, opts);
+            el.addEventListener('touchend', tpUp, opts);
+            el.addEventListener('touchcancel', tpUp, opts);
+        } else if (rdMode === 'touch') {
+            el.addEventListener('mousedown', touchTap, opts);
+            el.addEventListener('touchstart', touchTap, opts);
+        } else if (rdMode === 'scroll') {
+            el.addEventListener('mousedown', scrollDown, opts);
+            el.addEventListener('touchstart', scrollDown, opts);
+            el.addEventListener('mousemove', scrollMove, opts);
+            el.addEventListener('touchmove', scrollMove, opts);
+        }
+    }
+
+    // ── Mode buttons ──
+    function rdSetMode(mode) {
+        rdMode = mode;
+        document.querySelectorAll('.remote-btn').forEach(b => b.classList.remove('active'));
+        const btnMap = { trackpad: '#rdTrackpad', touch: '#rdTouch', scroll: '#rdScroll' };
+        if (btnMap[mode]) $(btnMap[mode])?.classList.add('active');
+        rdBindEvents();
+        // Show mode toast
+        showToast(document.querySelector('.remote-mode-toast'), { trackpad: '🖱️ Trackpad', touch: '👆 Touch', scroll: '↕️ Scroll' }[mode] || mode);
+    }
+
+    function showToast(el, text) {
+        if (!el) {
+            // Create toast if missing
+            el = document.createElement('div');
+            el.className = 'remote-mode-toast';
+            rdScreen?.appendChild(el);
+        }
+        el.textContent = text;
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 1200);
+    }
+
+    $('#rdTrackpad')?.addEventListener('click', () => rdSetMode('trackpad'));
+    $('#rdTouch')?.addEventListener('click', () => rdSetMode('touch'));
+    $('#rdScroll')?.addEventListener('click', () => rdSetMode('scroll'));
+
+    // ── Keyboard ──
+    $('#rdKeyboard')?.addEventListener('click', () => {
+        if (rdHiddenInput) { rdHiddenInput.focus(); rdHiddenInput.click?.(); }
+    });
+
+    if (rdHiddenInput) {
+        rdHiddenInput.addEventListener('input', () => {
+            if (rdHiddenInput.value) {
+                rdSend({ action: 'typetext', text: rdHiddenInput.value });
+                rdHiddenInput.value = '';
+            }
+        });
+        rdHiddenInput.addEventListener('keydown', (e) => {
+            const keyMap = { Enter: 'enter', Backspace: 'backspace', Tab: 'tab', Escape: 'escape' };
+            if (keyMap[e.key]) { rdSend({ action: 'key', key: keyMap[e.key] }); e.preventDefault(); }
+        });
+    }
+
+    // ── Special Keys Menu ──
+    const SPECIAL_KEYS = [
+        { label: '⌘C', keys: ['command', 'c'] }, { label: '⌘V', keys: ['command', 'v'] },
+        { label: '⌘Z', keys: ['command', 'z'] }, { label: '⌘A', keys: ['command', 'a'] },
+        { label: '⌘S', keys: ['command', 's'] }, { label: '⌘W', keys: ['command', 'w'] },
+        { label: '⌘Q', keys: ['command', 'q'] }, { label: '⌘⇥', keys: ['command', 'tab'] },
+        { label: '⌘␣', keys: ['command', 'space'] }, { label: '⌘⇧Z', keys: ['command', 'shift', 'z'] },
+        { label: '⌘T', keys: ['command', 't'] }, { label: '⌘N', keys: ['command', 'n'] },
+        { label: 'ESC', keys: ['escape'] }, { label: '⏎', keys: ['enter'] },
+        { label: '⌫', keys: ['backspace'] }, { label: '⇥', keys: ['tab'] },
+        { label: '↑', keys: ['up'] }, { label: '↓', keys: ['down'] },
+        { label: '←', keys: ['left'] }, { label: '→', keys: ['right'] },
+    ];
+
+    let keysMenuEl = null;
+    function buildKeysMenu() {
+        if (keysMenuEl) return;
+        keysMenuEl = document.createElement('div');
+        keysMenuEl.className = 'remote-keys-menu';
+        SPECIAL_KEYS.forEach(sk => {
+            const btn = document.createElement('button');
+            btn.className = 'remote-key-btn';
+            btn.textContent = sk.label;
+            btn.addEventListener('click', () => rdSend({ action: 'hotkey', keys: sk.keys }));
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); rdSend({ action: 'hotkey', keys: sk.keys }); });
+            keysMenuEl.appendChild(btn);
+        });
+        rdScreen?.appendChild(keysMenuEl);
+    }
+
+    $('#rdKeys')?.addEventListener('click', () => {
+        buildKeysMenu();
+        keysMenuEl?.classList.toggle('show');
+    });
+
+    // ── Fullscreen ──
+    $('#rdFullscreen')?.addEventListener('click', () => {
+        const el = $('#tabRemote');
+        if (!el) return;
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else {
+            el.requestFullscreen?.();
+        }
+    });
+
+    // Prevent context menu and pull-to-refresh on remote screen
+    rdScreen?.addEventListener('contextmenu', e => e.preventDefault());
+    rdScreen?.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+    // ── Tab switching integration ──
+    const origSwitchTab = window._rdOrigSwitchTab;
+    // Hook into tab switching to connect/disconnect remote desktop
+    const navTabs = document.querySelectorAll('.nav-tab');
+    navTabs.forEach(t => {
+        t.addEventListener('click', () => {
+            const name = t.dataset.tab;
+            if (name === 'remote') {
+                rdActive = true;
+                if (!rdConnected && rdConfig.wsUrl) rdConnect();
+                rdBindEvents();
+            } else {
+                rdActive = false;
+                if (rdWs) { rdWs.close(); rdWs = null; }
+                if (rdReconnectTimer) { clearTimeout(rdReconnectTimer); rdReconnectTimer = null; }
+            }
+        });
+    });
+
+    // Prevent default touch behaviors on remote screen
+    document.addEventListener('touchmove', (e) => {
+        if (rdActive && e.target.closest('.remote-screen')) {
+            e.preventDefault();
+        }
+    }, { passive: false });
 })();

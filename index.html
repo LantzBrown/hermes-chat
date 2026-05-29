@@ -45,6 +45,7 @@
             </div>
             <nav class="nav-tabs" id="navTabs">
                 <button class="nav-tab active" data-tab="chat">💬 Chat</button>
+                <button class="nav-tab" data-tab="remote">🖥️ Remote</button>
                 <button class="nav-tab" data-tab="cron">⏰ Cron</button>
                 <button class="nav-tab" data-tab="overview">📊 Overview</button>
             </nav>
@@ -101,6 +102,41 @@
                     <span class="input-hint" id="inputHint">Enter to send · Shift+Enter for newline</span>
                 </div>
             </div>
+            </div>
+            <!-- Remote Desktop Tab -->
+            <div class="tab-panel" id="tabRemote">
+                <div class="remote-desktop-container">
+                    <div class="remote-toolbar">
+                        <div class="remote-status" id="remoteStatus">
+                            <span class="remote-dot" id="remoteDot"></span>
+                            <span id="remoteStatusText">Disconnected</span>
+                        </div>
+                        <div class="remote-controls">
+                            <button class="remote-btn active" id="rdTrackpad" title="Trackpad mode">🖱️</button>
+                            <button class="remote-btn" id="rdTouch" title="Direct touch">👆</button>
+                            <button class="remote-btn" id="rdScroll" title="Scroll mode">↕️</button>
+                            <button class="remote-btn" id="rdKeyboard" title="Keyboard">⌨️</button>
+                            <button class="remote-btn" id="rdKeys" title="Special keys">⌘</button>
+                            <button class="remote-btn" id="rdFullscreen" title="Fullscreen">⛶</button>
+                        </div>
+                        <span class="remote-fps" id="remoteFps">-- fps</span>
+                    </div>
+                    <div class="remote-screen" id="remoteScreen">
+                        <canvas id="remoteCanvas"></canvas>
+                        <div class="remote-touch-cursor" id="remoteTouchCursor"></div>
+                        <div class="remote-connect-msg" id="remoteConnectMsg">
+                            <div class="remote-connect-icon">🖥️</div>
+                            <h3>Remote Desktop</h3>
+                            <p>Enter your remote desktop server URL in Settings to connect.</p>
+                            <p class="remote-hint">Run <code>./start.sh</code> on your Mac to start the server.</p>
+                            <div class="remote-url-input">
+                                <input type="text" id="remoteUrlInput" placeholder="ws://localhost:8644/ws" />
+                                <button id="remoteConnectBtn" class="btn btn-primary">Connect</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="text" id="remoteHiddenInput" class="remote-hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                </div>
             </div>
             <!-- Cron Tab -->
             <div class="tab-panel" id="tabCron">
