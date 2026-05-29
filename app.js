@@ -397,107 +397,118 @@
 
         try {
             abortController = new AbortController();
-
-            // Use streaming endpoint for real-time activity
-            const resp = await api('/api/sessions/' + activeSessionId + '/chat/stream', {
-                method: 'POST',
-                body: JSON.stringify({ message: text, stream: true }),
-                signal: abortController.signal,
-            });
-
-            if (!resp.ok) {
-                const errText = await resp.text();
-                let errMsg;
-                try { errMsg = JSON.parse(errText).error?.message || errText; } catch { errMsg = errText; }
-                throw new Error(resp.status + ': ' + errMsg);
-            }
-
-            removeThinking();
-            const { bodyEl } = appendMessage('assistant', '', true);
             let fullContent = '';
+            let bodyEl;
             let activityStarted = false;
+            let streamingOk = false;
 
-            const reader = resp.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
+            // Try streaming endpoint first, fall back to non-streaming
+            try {
+                const resp = await api('/api/sessions/' + activeSessionId + '/chat/stream', {
+                    method: 'POST',
+                    body: JSON.stringify({ message: text, stream: true }),
+                    signal: abortController.signal,
+                });
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
+                if (resp.ok) {
+                    streamingOk = true;
+                    removeThinking();
+                    const msg = appendMessage('assistant', '', true);
+                    bodyEl = msg.bodyEl;
 
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || !trimmed.startsWith('data:')) continue;
-                    const data = trimmed.slice(5).trim();
-                    if (data === '[DONE]') continue;
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
 
-                    try {
-                        const parsed = JSON.parse(data);
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
 
-                        // Show tool calls as activity and update thinking label
-                        if (parsed.type === 'tool_call' || parsed.tool_calls) {
-                            const toolName = parsed.name || parsed.tool_calls?.[0]?.function?.name || 'tool';
-                            if (!activityStarted) { showActivityLog(); activityStarted = true; }
-                            addActivityItem('🔧', 'Calling ' + toolName + '...');
-                            updateThinkingLabel('Calling ' + toolName + '...');
+                        for (const line of lines) {
+                            const trimmed = line.trim();
+                            if (!trimmed || !trimmed.startsWith('data:')) continue;
+                            const data = trimmed.slice(5).trim();
+                            if (data === '[DONE]') continue;
+
+                            try {
+                                const parsed = JSON.parse(data);
+
+                                if (parsed.type === 'tool_call' || parsed.tool_calls) {
+                                    const toolName = parsed.name || parsed.tool_calls?.[0]?.function?.name || 'tool';
+                                    if (!activityStarted) { showActivityLog(); activityStarted = true; }
+                                    addActivityItem('🔧', 'Calling ' + toolName + '...');
+                                    updateThinkingLabel('Calling ' + toolName + '...');
+                                }
+                                if (parsed.type === 'tool_result') {
+                                    const toolName = parsed.name || 'tool';
+                                    if (!activityStarted) { showActivityLog(); activityStarted = true; }
+                                    addActivityItem('✅', toolName + ' done');
+                                    updateThinkingLabel('Processing results...');
+                                }
+
+                                if (parsed.type === 'thinking' || parsed.type === 'reasoning') {
+                                    updateThinkingLabel('Thinking...');
+                                }
+
+                                const delta = parsed.choices?.[0]?.delta;
+                                if (delta?.content) {
+                                    fullContent += delta.content;
+                                    if (fullContent.length === delta.content.length) updateThinkingLabel('Hermes is responding...');
+                                    bodyEl.innerHTML = renderMd(fullContent);
+                                }
+
+                                if (parsed.type === 'content' && parsed.content) {
+                                    fullContent += parsed.content;
+                                    if (fullContent.length === parsed.content.length) updateThinkingLabel('Hermes is responding...');
+                                    bodyEl.innerHTML = renderMd(fullContent);
+                                }
+                                if (parsed.type === 'text' && parsed.text) {
+                                    fullContent += parsed.text;
+                                    if (fullContent.length === parsed.text.length) updateThinkingLabel('Hermes is responding...');
+                                    bodyEl.innerHTML = renderMd(fullContent);
+                                }
+
+                                if (parsed.message?.content && !fullContent) {
+                                    fullContent = parsed.message.content;
+                                    bodyEl.innerHTML = renderMd(fullContent);
+                                }
+
+                            } catch {}
                         }
-                        if (parsed.type === 'tool_result') {
-                            const toolName = parsed.name || 'tool';
-                            if (!activityStarted) { showActivityLog(); activityStarted = true; }
-                            addActivityItem('✅', toolName + ' done');
-                            updateThinkingLabel('Processing results...');
-                        }
-
-                        // Detect thinking/reasoning events
-                        if (parsed.type === 'thinking' || parsed.type === 'reasoning') {
-                            updateThinkingLabel('Thinking...');
-                        }
-
-                        // Content delta
-                        const delta = parsed.choices?.[0]?.delta;
-                        if (delta?.content) {
-                            fullContent += delta.content;
-                            if (fullContent.length === delta.content.length) updateThinkingLabel('Hermes is responding...');
-                            bodyEl.innerHTML = renderMd(fullContent);
-                        }
-
-                        // Hermes session chat format
-                        if (parsed.type === 'content' && parsed.content) {
-                            fullContent += parsed.content;
-                            if (fullContent.length === parsed.content.length) updateThinkingLabel('Hermes is responding...');
-                            bodyEl.innerHTML = renderMd(fullContent);
-                        }
-                        if (parsed.type === 'text' && parsed.text) {
-                            fullContent += parsed.text;
-                            if (fullContent.length === parsed.text.length) updateThinkingLabel('Hermes is responding...');
-                            bodyEl.innerHTML = renderMd(fullContent);
-                        }
-
-                        // Final message
-                        if (parsed.message?.content && !fullContent) {
-                            fullContent = parsed.message.content;
-                            bodyEl.innerHTML = renderMd(fullContent);
-                        }
-
-                    } catch {}
+                        scrollToBottom();
+                    }
                 }
-                scrollToBottom();
+            } catch (streamErr) {
+                // Streaming failed (likely Cloudflare tunnel doesn't support SSE)
+                // Fall through to non-streaming
+                if (streamingOk) throw streamErr; // If we started streaming, re-throw
             }
 
-            // If no streaming content, try non-streaming fallback
+            // Non-streaming fallback (used when streaming fails or returns no content)
             if (!fullContent) {
-                try {
-                    const fallback = await api('/api/sessions/' + activeSessionId + '/chat', {
-                        method: 'POST',
-                        body: JSON.stringify({ message: text }),
-                    });
-                    const fd = await fallback.json();
-                    fullContent = fd.message?.content || fd.content || 'No response.';
-                    bodyEl.innerHTML = renderMd(fullContent);
-                } catch {}
+                removeThinking();
+                updateThinkingLabel('Hermes is responding...');
+                const resp = await api('/api/sessions/' + activeSessionId + '/chat', {
+                    method: 'POST',
+                    body: JSON.stringify({ message: text }),
+                    signal: abortController.signal,
+                });
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    let errMsg;
+                    try { errMsg = JSON.parse(errText).error?.message || errText; } catch { errMsg = errText; }
+                    throw new Error(resp.status + ': ' + errMsg);
+                }
+                const fd = await resp.json();
+                fullContent = fd.message?.content || fd.content || 'No response.';
+                if (!streamingOk) {
+                    const msg = appendMessage('assistant', '', true);
+                    bodyEl = msg.bodyEl;
+                }
+                bodyEl.innerHTML = renderMd(fullContent);
             }
 
             if (fullContent) {
